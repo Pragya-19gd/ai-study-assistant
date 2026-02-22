@@ -1,6 +1,9 @@
 {
   "name": "ai-study-assistant-root",
   "version": "1.0.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node server/index.js",
     "render-postbuild": "npm install --prefix client && npm run build --prefix client"
@@ -8,8 +11,8 @@
   "dependencies": {
     "express": "^4.21.0",
     "cors": "^2.8.5",
-    "multer": "^2.0.2",
+    "multer": "^1.4.5-lts.1",
     "@google/generative-ai": "^0.21.0",
-    "dotenv": "^16.4.5"
+    "path": "^0.12.7"
   }
 }
