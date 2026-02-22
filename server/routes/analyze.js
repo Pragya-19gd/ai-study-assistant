@@ -10,7 +10,7 @@ router.post("/", async (req, res) => {
   if (!text) return res.status(400).json({ error: "Text is required" });
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+   const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     // We ask Gemini to give us JSON so your React app can read it easily
     const prompt = `Analyze this text for a student. Provide a summary and a list of the 5 most important keywords. 
