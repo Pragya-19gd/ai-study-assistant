@@ -5,26 +5,28 @@ const analyzeRoute = require("./routes/analyze");
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// API route - This handles your AI logic
+// API Routes
 app.use("/analyze", analyzeRoute);
 
-// Serve frontend static files from the React build folder
-app.use(express.static(path.join(__dirname, "../client/build")));
+// STATIC FILES SETUP
+// __dirname /opt/render/project/src/server hota hai
+// Hume ek step piche ja kar 'client/build' dhundna hai
+const buildPath = path.join(__dirname, "..", "client", "build");
 
-/**
- * FIXED: Changed "*" to "/*any"
- * This prevents the PathError [TypeError]: Missing parameter name at index 1
- * while still allowing your React Router to handle client-side routing.
- */
-app.get("/*any", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/build", "index.html"));
+app.use(express.static(buildPath));
+
+app.get("/*", (req, res) => {
+  res.sendFile(path.join(buildPath, "index.html"), (err) => {
+    if (err) {
+      res.status(500).send("Build folder not found. Path: " + buildPath);
+    }
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 AI Study Assistant Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
