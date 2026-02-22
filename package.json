@@ -1,16 +1,11 @@
 {
   "name": "ai-study-assistant-root",
   "version": "1.0.0",
-  "description": "MERN Stack AI Study Assistant",
-  "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "install-server": "cd server && npm install",
     "install-client": "cd client && npm install",
     "build-client": "cd client && npm run build",
     "render-postbuild": "npm run install-server && npm run install-client && npm run build-client"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
   }
 }
