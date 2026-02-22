@@ -37,7 +37,11 @@ router.post("/", async (req, res) => {
 
   } catch (error) {
     console.error("OpenAI Error:", error);
-    res.status(500).json({ error: "AI failed to respond. Check API credits or key." });
+    res.status(500).json({ 
+    error: "AI failed to respond", 
+    keywords: [], // <--- This prevents the .map() crash!
+    summary: "Sorry, I couldn't process that right now." 
+  });
   }
 });
 

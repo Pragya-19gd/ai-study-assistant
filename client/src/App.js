@@ -170,7 +170,7 @@ function App() {
             <div style={{ backgroundColor: theme.card, padding: "20px", borderRadius: "12px" }}>
               <h3 style={{ marginTop: 0, color: theme.accent }}>Core Concepts</h3>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                {result.keywords.map((word, i) => (
+                {result.keywords && result.keywords.map((word, i) => (
                   <span key={i} style={{
                     backgroundColor: theme.accent + "22", // adds transparency
                     color: theme.accent,
