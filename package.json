@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node server/index.js",
-    "install-server": "cd server && npm install",
-    "install-client": "cd client && npm install",
-    "build-client": "cd client && npm run build",
-    "render-postbuild": "npm run install-server && npm run install-client && npm run build-client"
+    "render-postbuild": "npm install --prefix client && npm run build --prefix client"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "multer": "^2.0.2",
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5"
   }
 }
