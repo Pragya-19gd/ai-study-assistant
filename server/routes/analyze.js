@@ -1,49 +1,66 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Setup Multer to handle the file upload in memory
+const upload = multer({ storage: multer.memoryStorage() });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-router.post("/", async (req, res) => {
+// We change this to handle BOTH text and PDF files
+router.post("/", upload.single("pdf"), async (req, res) => {
   const { text } = req.body;
-  if (!text) return res.status(400).json({ error: "Text is required" });
-
+  
   try {
-    // UPDATED FOR 2026: Use gemini-2.5-flash
+    // 2026 Model check: gemini-2.5-flash is currently the standard
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Analyze this text for a student. Provide a summary and a list of 5 keywords. 
-    Return the response as a JSON object:
+    const prompt = `Analyze this study material. 
+    Return ONLY a JSON object:
     {
-      "summary": "text summary here",
-      "keywords": ["word1", "word2", "word3", "word4", "word5"]
+      "summary": "a helpful 3-4 sentence summary",
+      "keywords": ["key1", "key2", "key3", "key4", "key5"]
     }`;
 
-    const result = await model.generateContent([prompt, text]);
-    const response = await result.response;
-    let outputText = response.text();
+    let result;
 
-    // Cleaning the AI output to ensure it's valid JSON
-    const cleanJSON = outputText.substring(
-      outputText.indexOf("{"),
-      outputText.lastIndexOf("}") + 1
-    );
-    const aiData = JSON.parse(cleanJSON);
+    // CASE 1: User uploaded a PDF
+    if (req.file) {
+      const pdfPart = {
+        inlineData: {
+          data: req.file.buffer.toString("base64"),
+          mimeType: "application/pdf",
+        },
+      };
+      result = await model.generateContent([prompt, pdfPart]);
+    } 
+    // CASE 2: User pasted text
+    else if (text) {
+      result = await model.generateContent([prompt, text]);
+    } 
+    else {
+      return res.status(400).json({ error: "Please provide text or a PDF file." });
+    }
+
+    const response = await result.response;
+    const outputText = response.text();
+
+    // Clean JSON parsing
+    const jsonStart = outputText.indexOf("{");
+    const jsonEnd = outputText.lastIndexOf("}") + 1;
+    const aiData = JSON.parse(outputText.substring(jsonStart, jsonEnd));
 
     res.json({
       summary: aiData.summary,
       keywords: aiData.keywords,
-      wordCount: text.split(/\s+/).filter(w => w.length > 0).length
+      // If it's a PDF, we can't easily count words here, so we return a default
+      wordCount: text ? text.split(/\s+/).length : "PDF Document"
     });
 
   } catch (error) {
-    console.error("--- LOGGING FULL ERROR ---");
-    console.error(error.message);
-    res.status(500).json({ 
-      error: "AI failed to respond", 
-      keywords: ["Error"], 
-      summary: "The AI model version might be outdated or the key is restricted. Please check Render logs." 
-    });
+    console.error("Analysis Error:", error);
+    res.status(500).json({ error: "AI failed to analyze the document." });
   }
 });
 
