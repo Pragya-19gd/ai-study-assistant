@@ -39,14 +39,18 @@ function App() {
   };
 
   const getHighlightedText = () => {
-    if (!result) return text;
-    let highlighted = text;
-    result.keywords.forEach(word => {
+  // Add a safety check: if result or result.keywords is missing, just return the text
+  if (!result || !result.keywords || !Array.isArray(result.keywords)) return text;
+  
+  let highlighted = text;
+  result.keywords.forEach(word => {
+    if (word) { // Only highlight if the word exists
       const regex = new RegExp(`\\b(${word})\\b`, "gi");
       highlighted = highlighted.replace(regex, `<mark style="background-color: #f1c40f; color: black; border-radius: 4px; padding: 0 2px;">$1</mark>`);
-    });
-    return highlighted;
-  };
+    }
+  });
+  return highlighted;
+};
 
   const copyToClipboard = (content) => {
     navigator.clipboard.writeText(content);
@@ -111,6 +115,7 @@ function App() {
           
           <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
             <button
+               type="button"
               onClick={analyzeText}
               disabled={loading}
               style={{
