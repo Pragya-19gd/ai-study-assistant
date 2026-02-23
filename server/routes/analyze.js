@@ -5,54 +5,68 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize with the stable version if possible
+// Initialization
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
     const { text } = req.body;
 
-    // FIX: Using the most stable model identifier for 2026
-    // We remove the "models/" prefix as the SDK handles it
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" }); 
+    // FIX: Kuch regions mein sirf 'gemini-1.5-flash' 404 deta hai.
+    // Hum 'models/gemini-1.5-flash' use karenge jo absolute path hai.
+    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
-    const prompt = `Analyze this material and provide a detailed study guide. 
-    Use Markdown headings (##) for: Executive Summary, Key Concepts, and Analysis.`;
+    const prompt = `You are an Academic Tutor. Analyze this and provide a study guide in Markdown. 
+    Use headers: ## 📌 Executive Summary, ## 🧠 Key Concepts.`;
 
     let result;
 
     if (req.file) {
-      // PDF handling for 1.5-Pro (Stable)
+      console.log("Analyzing PDF...");
       const pdfPart = {
         inlineData: {
           data: req.file.buffer.toString("base64"),
           mimeType: "application/pdf",
         },
       };
+      // Important: prompt aur file ko array mein bhejna
       result = await model.generateContent([prompt, pdfPart]);
     } else {
-      result = await model.generateContent([prompt, text]);
+      console.log("Analyzing Text...");
+      result = await model.generateContent([prompt, text || "No text provided"]);
     }
 
     const response = await result.response;
     const outputText = response.text();
 
+    if (!outputText) throw new Error("AI returned empty content");
+
     res.json({
       summary: outputText,
-      keywords: ["Stable AI", "Academic Guide"],
+      keywords: ["Stable-Update", "2026-Ready"],
       wordCount: "Document"
     });
 
   } catch (error) {
-    console.error("Gemini Request Error:", error);
+    console.error("Gemini Error Debug:", error);
     
-    // If it STILL says 404, we try the absolute fallback name
-    res.status(500).json({ 
-      error: "Connection Error", 
-      summary: `The AI is reporting a 404. This usually means the SDK needs an update. 
-                Error: ${error.message}`,
-      suggestion: "Try running 'npm install @google/generative-ai@latest' in your server folder."
-    });
+    // Agar Models/ Flash fail ho, toh final fallback Gemini-Pro par
+    try {
+        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const fallbackResult = await fallbackModel.generateContent(text || "Please analyze this document.");
+        const fallbackText = fallbackResult.response.text();
+        
+        return res.json({
+            summary: fallbackText,
+            keywords: ["Fallback-Active"],
+            wordCount: "Document"
+        });
+    } catch (innerError) {
+        res.status(500).json({ 
+            error: "API Access Error", 
+            summary: "404 persistent. Possible Region Lock or API Key restriction. Error: " + error.message 
+        });
+    }
   }
 });
 
