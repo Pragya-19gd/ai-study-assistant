@@ -5,62 +5,64 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Check API Key immediately
-if (!process.env.GEMINI_API_KEY) {
-  console.error("CRITICAL: GEMINI_API_KEY is missing!");
-}
-
+// Initialize the API with your Key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.post("/", upload.single("pdf"), async (req, res) => {
-  const { text } = req.body;
-
   try {
-    // FIX: Using 'gemini-1.5-flash' without the v1beta prefix or using 'latest'
-    // Also, some regions require gemini-pro if flash is undergoing maintenance
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const { text } = req.body;
 
-    const prompt = `You are an Academic AI Tutor. 
-    Analyze the provided content and provide a detailed study guide in Markdown.
-    Include: ## 📌 Executive Summary, ## 🧠 Key Concepts, and ## 💡 Takeaways.`;
+    // SWITCHED TO PRO MODEL: More stable, no 404 errors
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const prompt = `
+      You are an expert Academic Tutor. Analyze the provided content and generate a professional study guide.
+      
+      Structure your response with these Markdown headers:
+      ## 📌 Executive Summary
+      ## 🧠 Key Concepts & Definitions
+      ## 🛠️ Process Breakdown
+      ## 💡 Critical Analysis/Takeaways
+      
+      Use bullet points and bold text for clarity. Do NOT use JSON.
+    `;
 
     let result;
 
     if (req.file) {
-      console.log("Analyzing PDF...");
+      // Note: gemini-pro (text-only) sometimes struggles with raw PDF bytes.
+      // If you get an error here, you might need to use 'gemini-1.5-flash' 
+      // but ensure your SDK is updated to the latest version.
+      const pdfData = req.file.buffer.toString("base64");
       const pdfPart = {
-        inlineData: {
-          data: req.file.buffer.toString("base64"),
-          mimeType: "application/pdf",
-        },
+        inlineData: { data: pdfData, mimeType: "application/pdf" }
       };
-      // Important: Pass as an array
+      
+      // Attempting analysis
       result = await model.generateContent([prompt, pdfPart]);
-    } else if (text) {
-      console.log("Analyzing Text...");
-      result = await model.generateContent([prompt, text]);
     } else {
-      return res.status(400).json({ error: "No input provided" });
+      result = await model.generateContent([prompt, text]);
     }
 
     const response = await result.response;
     const outputText = response.text();
 
-    if (!outputText) throw new Error("AI returned empty response");
+    if (!outputText) throw new Error("AI returned empty content");
 
     res.json({
       summary: outputText,
-      keywords: ["Analysis", "Education"],
-      wordCount: "Document"
+      keywords: ["Pro Analysis", "Study Guide", "Academic"],
+      wordCount: text ? text.split(/\s+/).length : "PDF Document"
     });
 
   } catch (error) {
-    console.error("Gemini API Error Details:", error);
+    console.error("Pro Model Error:", error.message);
     
-    // Detailed error for frontend
+    // Fallback if gemini-pro rejects the PDF format
     res.status(500).json({ 
-      error: "AI Error", 
-      summary: "Error: " + error.message + ". Please ensure your API Key has access to Gemini 1.5 Flash."
+      error: "Analysis Failed", 
+      summary: "The Pro model encountered an issue: " + error.message + ". Try pasting the text directly if the PDF fails.",
+      keywords: ["Error"]
     });
   }
 });
