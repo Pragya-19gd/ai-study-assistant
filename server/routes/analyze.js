@@ -16,12 +16,32 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     // 2026 Model check: gemini-2.5-flash is currently the standard
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Analyze this study material. 
-    Return ONLY a JSON object:
-    {
-      "summary": "a helpful 3-4 sentence summary",
-      "keywords": ["key1", "key2", "key3", "key4", "key5"]
-    }`;
+    const prompt = `
+  You are an advanced Academic AI Tutor specializing in Project Management and Software Engineering.
+  Based on the following text, provide a comprehensive and highly detailed study guide.
+  
+  Please structure your response exactly like this:
+  
+  1. ## 📌 Executive Summary
+     Provide a deep, 2-3 paragraph overview of the core themes.
+  
+  2. ## 🧠 Key Concepts & Definitions
+     Identify the main technical terms (like Configuration Management, QA, etc.) and explain them in detail.
+  
+  3. ## 🛠️ Process Breakdown
+     Explain the "How-to" parts. For example, how does Monitoring & Control actually work according to the text?
+  
+  4. ## 🎯 Strategic Goals & Outcomes
+     What are the ultimate objectives regarding budget, time, and quality?
+  
+  5. ## 💡 Critical Analysis/Takeaways
+     Provide 3-5 high-level insights that a student must remember for an exam.
+
+  Use Markdown (bolding, headers, and bullet points) to make it professional and easy to read.
+  
+  Text to analyze:
+  ${extractedText}
+`;
 
     let result;
 

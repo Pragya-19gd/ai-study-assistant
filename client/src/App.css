@@ -1,38 +1,71 @@
+/* Existing App styles... */
 .App {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* --- New Markdown & Summary Styling --- */
+
+.markdown-content {
+  text-align: left; /* Summary hamesha left-aligned honi chahiye */
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 16px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Headings styling: ## Section Name */
+.markdown-content h2 {
+  color: #3498db;
+  border-bottom: 2px solid #3498db22;
+  padding-bottom: 8px;
+  margin-top: 25px;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* Sub-headings styling: ### Sub-topic */
+.markdown-content h3 {
+  color: #2ecc71;
+  margin-top: 20px;
+  font-size: 1.2rem;
 }
 
-.App-link {
-  color: #61dafb;
+/* Paragraph styling */
+.markdown-content p {
+  line-height: 1.8;
+  margin-bottom: 15px;
+  opacity: 0.9;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* List styling (Bullets) */
+.markdown-content ul, .markdown-content ol {
+  margin-left: 20px;
+  margin-bottom: 20px;
+}
+
+.markdown-content li {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* Bold text highlight */
+.markdown-content strong {
+  color: #3498db;
+  font-weight: 600;
+}
+
+/* Scrollbar styling for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3498db;
 }
