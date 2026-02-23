@@ -1,5 +1,7 @@
 {
   "name": "study-assistant-server",
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1"
+  }
 }
