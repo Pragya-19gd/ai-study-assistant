@@ -3,12 +3,14 @@ const router = express.Router();
 const multer = require("multer");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Setup Multer to handle the file upload in memory
-const upload = multer({ storage: multer.memoryStorage() });
+// File size limit set to 10MB (Standard for PDFs)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } 
+});
 
-// Check API Key
 if (!process.env.GEMINI_API_KEY) {
-  console.error("CRITICAL ERROR: GEMINI_API_KEY is missing in Env variables!");
+  console.error("CRITICAL ERROR: GEMINI_API_KEY is missing!");
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -17,83 +19,98 @@ router.post("/", upload.single("pdf"), async (req, res) => {
   const { text } = req.body;
   
   try {
-    // Model selection
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Gemini 1.5 Flash is best for speed and PDF analysis
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: {
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 2048,
+        }
+    });
 
-    // Improved Prompt for better structured Markdown
     const prompt = `
-      You are an advanced Academic AI Tutor. 
-      Analyze the provided content and generate a highly detailed study guide.
+      You are an expert Academic Tutor. Your task is to analyze the provided material and generate a high-quality, professional study guide.
       
-      IMPORTANT: Structure your response using these EXACT Markdown headers:
+      STRUCTURE YOUR RESPONSE USING THESE MARKDOWN HEADERS:
       
       ## 📌 Executive Summary
-      (Provide a deep, 2-3 paragraph overview)
+      Provide a 2-3 paragraph detailed overview of the material.
       
       ## 🧠 Key Concepts & Definitions
-      (Identify the main technical terms and explain them in detail)
+      List and explain the most important terms and theories in detail.
       
       ## 🛠️ Process Breakdown
-      (Explain the methodology or "How-to" parts found in the text)
+      Detail the methodologies, steps, or "how-to" guides mentioned.
       
       ## 🎯 Strategic Goals & Outcomes
-      (What are the ultimate objectives discussed?)
+      Explain the primary objectives and intended results.
       
       ## 💡 Critical Analysis/Takeaways
-      (Provide 3-5 high-level insights for an exam)
+      Give 3-5 high-level bullet points for exam preparation.
 
-      Guidelines:
-      - Use professional language.
-      - Use bullet points for readability.
-      - DO NOT use JSON formatting; return only Markdown text.
+      INSTRUCTIONS:
+      - Use professional and academic tone.
+      - Use bold text for emphasis.
+      - Use bullet points for all lists.
+      - DO NOT wrap the response in code blocks or JSON.
     `;
 
     let result;
 
-    // CASE 1: User uploaded a PDF
+    // CASE 1: PDF Uploaded
     if (req.file) {
+      console.log("Processing PDF:", req.file.originalname);
       const pdfPart = {
         inlineData: {
           data: req.file.buffer.toString("base64"),
           mimeType: "application/pdf",
         },
       };
-      // Important: Send prompt first, then the file part
+      // Sending prompt and PDF to Gemini
       result = await model.generateContent([prompt, pdfPart]);
     } 
-    // CASE 2: User pasted text
+    // CASE 2: Text Pasted
     else if (text && text.trim().length > 0) {
+      console.log("Processing Text Input");
       result = await model.generateContent([prompt, text]);
     } 
     else {
-      return res.status(400).json({ error: "No content found. Please upload a PDF or paste text." });
+      return res.status(400).json({ error: "Please upload a PDF or paste some text to analyze." });
     }
 
+    // Await the full response
     const response = await result.response;
     const outputText = response.text();
 
-    // Safety check if AI returned empty text
-    if (!outputText) {
-      throw new Error("Gemini returned an empty response.");
+    if (!outputText || outputText.length === 0) {
+      console.error("Gemini returned empty text.");
+      return res.status(500).json({ error: "AI produced an empty response. Please try again with different content." });
     }
 
-    // Dynamic Keyword Extraction (Simple logic to pick capitalized words as keywords)
-    const words = outputText.split(/\s+/);
-    const potentialKeywords = [...new Set(words.filter(w => w.length > 5 && /^[A-Z]/.test(w)).slice(0, 6))];
+    // Extract Keywords dynamically (picking nouns/technical terms)
+    const keywords = outputText
+      .match(/\*\*([^*]+)\*\*/g) // Picks text inside **bold**
+      ?.map(k => k.replace(/\*\*/g, ''))
+      .slice(0, 8) || ["Study Guide", "Project Management"];
 
-    // Sending the response
+    console.log("Analysis successful. Response length:", outputText.length);
+
+    // Final JSON response to frontend
     res.json({
       summary: outputText, 
-      keywords: potentialKeywords.length > 0 ? potentialKeywords : ["Study Notes", "Analysis"], 
+      keywords: keywords,
       wordCount: text ? text.split(/\s+/).length : "PDF Document"
     });
 
   } catch (error) {
-    console.error("--- Analysis Error Log ---");
-    console.error(error.message);
+    console.error("--- Detailed Backend Error ---");
+    console.error(error);
     res.status(500).json({ 
-      error: "AI failed to analyze the document.",
-      details: error.message 
+      error: "AI analysis failed.", 
+      details: error.message,
+      suggestion: "Make sure your API key is active and the PDF is not password protected."
     });
   }
 });
