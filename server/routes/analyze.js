@@ -6,38 +6,46 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Setup Multer to handle the file upload in memory
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Check API Key
+if (!process.env.GEMINI_API_KEY) {
+  console.error("CRITICAL ERROR: GEMINI_API_KEY is missing in Env variables!");
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.post("/", upload.single("pdf"), async (req, res) => {
   const { text } = req.body;
   
   try {
-    // 2026 Model check: gemini-2.0-flash is the current stable choice
+    // Model selection
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Note: We use the available input (text or file) for the prompt
+    // Improved Prompt for better structured Markdown
     const prompt = `
-      You are an advanced Academic AI Tutor specializing in Project Management and Software Engineering.
-      Analyze the provided material and provide a comprehensive study guide.
+      You are an advanced Academic AI Tutor. 
+      Analyze the provided content and generate a highly detailed study guide.
       
-      Structure your response exactly like this:
+      IMPORTANT: Structure your response using these EXACT Markdown headers:
       
       ## 📌 Executive Summary
-      Provide a deep, 2-3 paragraph overview.
+      (Provide a deep, 2-3 paragraph overview)
       
       ## 🧠 Key Concepts & Definitions
-      Identify the main technical terms and explain them in detail.
+      (Identify the main technical terms and explain them in detail)
       
       ## 🛠️ Process Breakdown
-      Explain the "How-to" parts.
+      (Explain the methodology or "How-to" parts found in the text)
       
       ## 🎯 Strategic Goals & Outcomes
-      What are the ultimate objectives?
+      (What are the ultimate objectives discussed?)
       
       ## 💡 Critical Analysis/Takeaways
-      Provide 3-5 high-level insights for an exam.
+      (Provide 3-5 high-level insights for an exam)
 
-      Use Markdown (bolding, headers, and bullet points). Do NOT wrap your response in JSON tags.
+      Guidelines:
+      - Use professional language.
+      - Use bullet points for readability.
+      - DO NOT use JSON formatting; return only Markdown text.
     `;
 
     let result;
@@ -50,30 +58,43 @@ router.post("/", upload.single("pdf"), async (req, res) => {
           mimeType: "application/pdf",
         },
       };
+      // Important: Send prompt first, then the file part
       result = await model.generateContent([prompt, pdfPart]);
     } 
     // CASE 2: User pasted text
-    else if (text) {
+    else if (text && text.trim().length > 0) {
       result = await model.generateContent([prompt, text]);
     } 
     else {
-      return res.status(400).json({ error: "Please provide text or a PDF file." });
+      return res.status(400).json({ error: "No content found. Please upload a PDF or paste text." });
     }
 
     const response = await result.response;
     const outputText = response.text();
 
-    // FIXED: No JSON.parse needed because we want the Markdown text directly.
-    // We send back the response that the frontend expects.
+    // Safety check if AI returned empty text
+    if (!outputText) {
+      throw new Error("Gemini returned an empty response.");
+    }
+
+    // Dynamic Keyword Extraction (Simple logic to pick capitalized words as keywords)
+    const words = outputText.split(/\s+/);
+    const potentialKeywords = [...new Set(words.filter(w => w.length > 5 && /^[A-Z]/.test(w)).slice(0, 6))];
+
+    // Sending the response
     res.json({
       summary: outputText, 
-      keywords: ["Analysis Complete", "Study Guide Ready"], // Placeholder keywords
+      keywords: potentialKeywords.length > 0 ? potentialKeywords : ["Study Notes", "Analysis"], 
       wordCount: text ? text.split(/\s+/).length : "PDF Document"
     });
 
   } catch (error) {
-    console.error("Analysis Error:", error);
-    res.status(500).json({ error: "AI failed to analyze the document. Check if API Key is valid." });
+    console.error("--- Analysis Error Log ---");
+    console.error(error.message);
+    res.status(500).json({ 
+      error: "AI failed to analyze the document.",
+      details: error.message 
+    });
   }
 });
 
