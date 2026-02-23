@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ReactMarkdown from "react-markdown"; // 1. Import Markdown library
+import ReactMarkdown from "react-markdown";
 
 function App() {
   const [text, setText] = useState("");
@@ -40,13 +40,31 @@ function App() {
       const data = await response.json();
       setResult(data);
     } catch (error) {
-      alert("Error connecting to backend. Check Render logs!");
+      console.error("Frontend Error:", error);
+      alert("Error connecting to backend. Check if the server is awake on Render!");
     } finally {
       setLoading(false);
     }
   };
 
-  // ... (getHighlightedText and copyToClipboard same as your code)
+  const copyToClipboard = (content) => {
+    if (!content) return;
+    navigator.clipboard.writeText(content);
+    alert("Copied to clipboard! 📋");
+  };
+
+  // Logic to highlight keywords in the pasted text (only for text mode)
+  const getHighlightedText = () => {
+    if (!result || !result.keywords || !text) return text;
+    let highlighted = text;
+    result.keywords.forEach(word => {
+      if (word && word !== "Analysis Complete") {
+        const regex = new RegExp(`\\b(${word})\\b`, "gi");
+        highlighted = highlighted.replace(regex, `<mark style="background-color: #f1c40f; color: black; border-radius: 4px; padding: 0 2px;">$1</mark>`);
+      }
+    });
+    return highlighted;
+  };
 
   return (
     <div style={{ backgroundColor: theme.bg, color: theme.text, minHeight: "100vh", padding: "20px", transition: "all 0.3s ease" }}>
@@ -91,16 +109,19 @@ function App() {
 
         {result && (
           <div style={{ display: "grid", gap: "20px" }}>
-            {/* UPDATED: Summary Section with ReactMarkdown */}
             <div style={{ backgroundColor: theme.card, padding: "25px", borderRadius: "12px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
                 <h3 style={{ marginTop: 0, color: theme.accent }}>Detailed Analysis</h3>
                 <button onClick={() => copyToClipboard(result.summary)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px" }}>📋</button>
               </div>
               
-              {/* ReactMarkdown handles the bolding and headings from Gemini */}
               <div style={{ lineHeight: "1.7", color: theme.text, textAlign: "left" }} className="markdown-content">
-                <ReactMarkdown>{result.summary}</ReactMarkdown>
+                {/* Result summary check to prevent errors */}
+                {result.summary ? (
+                  <ReactMarkdown>{result.summary}</ReactMarkdown>
+                ) : (
+                  <p>AI response was received but summary is empty.</p>
+                )}
               </div>
             </div>
             
@@ -114,6 +135,17 @@ function App() {
                 ))}
               </div>
             </div>
+
+            {/* Smart Highlight view for manual text input */}
+            {!file && text && (
+              <div style={{ backgroundColor: theme.card, padding: "20px", borderRadius: "12px" }}>
+                <h3 style={{ marginTop: 0, color: theme.accent }}>Smart Highlight View</h3>
+                <div 
+                  style={{ lineHeight: "1.8", whiteSpace: "pre-wrap", color: theme.text, backgroundColor: darkMode ? "#111" : "#f9f9f9", padding: "15px", borderRadius: "8px", textAlign: "left" }}
+                  dangerouslySetInnerHTML={{ __html: getHighlightedText() }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -8,40 +8,37 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// We change this to handle BOTH text and PDF files
 router.post("/", upload.single("pdf"), async (req, res) => {
   const { text } = req.body;
   
   try {
-    // 2026 Model check: gemini-2.5-flash is currently the standard
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // 2026 Model check: gemini-2.0-flash is the current stable choice
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+    // Note: We use the available input (text or file) for the prompt
     const prompt = `
-  You are an advanced Academic AI Tutor specializing in Project Management and Software Engineering.
-  Based on the following text, provide a comprehensive and highly detailed study guide.
-  
-  Please structure your response exactly like this:
-  
-  1. ## 📌 Executive Summary
-     Provide a deep, 2-3 paragraph overview of the core themes.
-  
-  2. ## 🧠 Key Concepts & Definitions
-     Identify the main technical terms (like Configuration Management, QA, etc.) and explain them in detail.
-  
-  3. ## 🛠️ Process Breakdown
-     Explain the "How-to" parts. For example, how does Monitoring & Control actually work according to the text?
-  
-  4. ## 🎯 Strategic Goals & Outcomes
-     What are the ultimate objectives regarding budget, time, and quality?
-  
-  5. ## 💡 Critical Analysis/Takeaways
-     Provide 3-5 high-level insights that a student must remember for an exam.
+      You are an advanced Academic AI Tutor specializing in Project Management and Software Engineering.
+      Analyze the provided material and provide a comprehensive study guide.
+      
+      Structure your response exactly like this:
+      
+      ## 📌 Executive Summary
+      Provide a deep, 2-3 paragraph overview.
+      
+      ## 🧠 Key Concepts & Definitions
+      Identify the main technical terms and explain them in detail.
+      
+      ## 🛠️ Process Breakdown
+      Explain the "How-to" parts.
+      
+      ## 🎯 Strategic Goals & Outcomes
+      What are the ultimate objectives?
+      
+      ## 💡 Critical Analysis/Takeaways
+      Provide 3-5 high-level insights for an exam.
 
-  Use Markdown (bolding, headers, and bullet points) to make it professional and easy to read.
-  
-  Text to analyze:
-  ${extractedText}
-`;
+      Use Markdown (bolding, headers, and bullet points). Do NOT wrap your response in JSON tags.
+    `;
 
     let result;
 
@@ -66,21 +63,17 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     const response = await result.response;
     const outputText = response.text();
 
-    // Clean JSON parsing
-    const jsonStart = outputText.indexOf("{");
-    const jsonEnd = outputText.lastIndexOf("}") + 1;
-    const aiData = JSON.parse(outputText.substring(jsonStart, jsonEnd));
-
+    // FIXED: No JSON.parse needed because we want the Markdown text directly.
+    // We send back the response that the frontend expects.
     res.json({
-      summary: aiData.summary,
-      keywords: aiData.keywords,
-      // If it's a PDF, we can't easily count words here, so we return a default
+      summary: outputText, 
+      keywords: ["Analysis Complete", "Study Guide Ready"], // Placeholder keywords
       wordCount: text ? text.split(/\s+/).length : "PDF Document"
     });
 
   } catch (error) {
     console.error("Analysis Error:", error);
-    res.status(500).json({ error: "AI failed to analyze the document." });
+    res.status(500).json({ error: "AI failed to analyze the document. Check if API Key is valid." });
   }
 });
 
