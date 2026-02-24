@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { GoogleGenAI } = require("@google/genai");
+const { createClient } = require("@google/genai"); // Nayi library ka sahi import
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize new Gemini client
-const genAI = new GoogleGenAI({
+// 1. Client ko sahi se initialize karein
+const client = createClient({
   apiKey: process.env.GEMINI_API_KEY,
-  apiVersion: "v1"   
 });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
@@ -17,19 +16,18 @@ router.post("/", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No input provided" });
     }
 
-    const prompt = "Analyze and summarize this clearly:";
-
-    let result;
+    const promptText = "Analyze and summarize this clearly:";
+    let response;
 
     if (req.file) {
-      // PDF input
-      result = await genAI.models.generateContent({
+      // 2. PDF handle karne ka sahi tarika (nayi SDK mein)
+      response = await client.models.generateContent({
         model: "gemini-1.5-flash",
         contents: [
           {
             role: "user",
             parts: [
-              { text: prompt },
+              { text: promptText },
               {
                 inlineData: {
                   mimeType: "application/pdf",
@@ -41,14 +39,16 @@ router.post("/", upload.single("pdf"), async (req, res) => {
         ],
       });
     } else {
-      // Text input
-      result = await genAI.models.generateContent({
+      // 3. Text handle karne ka sahi tarika
+      response = await client.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: prompt + "\n" + req.body.text,
+        contents: [{ role: "user", parts: [{ text: promptText + "\n" + req.body.text }] }],
       });
     }
 
-    res.json({ summary: result.text });
+    // 4. Response nikalne ka sahi tarika
+    const summary = response.value.content.parts[0].text;
+    res.json({ summary });
 
   } catch (error) {
     console.error("API ERROR:", error);
