@@ -8,6 +8,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Initialize new Gemini client
 const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
+  apiVersion: "v1"   
 });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
