@@ -5,38 +5,47 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// 1. Simple initialization
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
-    // 1. Initialize API
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    
-    // 2. Force 'v1' API Version (Ye 404 error ko khatam karega)
+    if (!req.file && !req.body.text) {
+      return res.status(400).json({ error: "No input provided" });
+    }
+
+    // 2. IMPORTANT: Version ko yahan second argument mein daala hai
+    // Model name ko ek dum simple rakha hai: "gemini-1.5-flash"
     const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash-latest" },
-      { apiVersion: 'v1' } // 🔥 YEH LINE HI SOLUTION HAI
+      { model: "gemini-1.5-flash" }, 
+      { apiVersion: "v1" } 
     );
 
-    console.log("Using Stable v1 API...");
-
-    let prompt = "Summarize this content properly:";
+    const prompt = "Analyze and summarize this clearly:";
     let result;
 
     if (req.file) {
       result = await model.generateContent([
         prompt,
-        { inlineData: { data: req.file.buffer.toString("base64"), mimeType: "application/pdf" } }
+        {
+          inlineData: {
+            data: req.file.buffer.toString("base64"),
+            mimeType: "application/pdf",
+          },
+        },
       ]);
     } else {
-      const text = req.body.text || "No text";
-      result = await model.generateContent(prompt + "\n\n" + text);
+      result = await model.generateContent(prompt + "\n" + req.body.text);
     }
 
-    const response = await result.response;
-    res.json({ summary: response.text() });
+    res.json({ summary: result.response.text() });
 
   } catch (error) {
-    console.error("DETAILED ERROR:", error.message);
-    res.status(500).json({ error: error.message });
+    console.error("API ERROR:", error);
+    res.status(500).json({
+      error: "AI processing failed",
+      details: error.message,
+    });
   }
 });
 

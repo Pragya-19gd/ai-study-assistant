@@ -1,5 +1,5 @@
 {
-  "name": "ai-study-assistant-v2", 
+  "name": "ai-study-assistant-v2",
   "version": "2.0.0",
   "scripts": {
     "start": "node server/index.js",
@@ -7,10 +7,10 @@
     "render-postbuild": "npm install --prefix client && npm run build --prefix client"
   },
   "dependencies": {
-    "@google/generative-ai": "0.21.0",
-    "express": "^4.21.0",
+    "@google/generative-ai": "^0.21.0",
     "cors": "^2.8.5",
-    "multer": "^1.4.5-lts.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
   }
 }
