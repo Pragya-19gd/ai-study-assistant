@@ -16,7 +16,7 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     const model = genAI.getGenerativeModel(
-      { model: "gemini-1.0-pro" }
+      { model: "gemini-1.5-flash" }
     );
 
     const prompt = "Analyze and summarize this clearly:";
