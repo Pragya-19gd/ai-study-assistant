@@ -6,12 +6,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const upload = multer({ storage: multer.memoryStorage() });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
     const { text } = req.body;
     const model = genAI.getGenerativeModel({ 
-     model: "models/gemini-1.5-flash", 
-     apiVersion: 'v1' 
+     model: "models/gemini-1.5-flash",  
 });
 
     const prompt = `You are a professional tutor. Provide a detailed study guide in Markdown. 
