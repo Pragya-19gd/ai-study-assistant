@@ -12,7 +12,7 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     
     // 2. Specify model with explicit v1 support
     const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" },
+      { model: "models/gemini-1.5-flash" },
       { apiVersion: "v1" } // 🔥 This line is the MAGIC fix for 404
     );
 
