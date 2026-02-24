@@ -17,8 +17,8 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     // 2. IMPORTANT: Version ko yahan second argument mein daala hai
     // Model name ko ek dum simple rakha hai: "gemini-1.5-flash"
     const model = genAI.getGenerativeModel(
-      { model: "models/gemini-1.5-flash" }, 
-      { apiVersion: "v1beta" } 
+      { model: "gemini-1.5-flash-latest" }, 
+      
     );
 
     const prompt = "Analyze and summarize this clearly:";
