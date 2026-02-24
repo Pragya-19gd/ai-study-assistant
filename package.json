@@ -10,7 +10,7 @@
     "render-postbuild": "npm install --prefix client && npm run build --prefix client"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@google/generative-ai": "^0.21.0",
     "cors": "^2.8.5",
     "debug": "^4.3.4",
     "dotenv": "^16.4.5",

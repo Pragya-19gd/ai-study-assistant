@@ -9,7 +9,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
     const { text } = req.body;
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ 
+     model: "models/gemini-1.5-flash", 
+     apiVersion: 'v1' 
+});
 
     const prompt = `You are a professional tutor. Provide a detailed study guide in Markdown. 
     Include headers: ## 📌 Executive Summary, ## 🧠 Key Concepts.`;
