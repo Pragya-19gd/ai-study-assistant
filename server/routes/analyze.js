@@ -1,79 +1,61 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const axios = require("axios"); // Axios use karenge seedha API call ke liye
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
-    // 1. Input Validation
     if (!req.file && !req.body.text) {
       return res.status(400).json({ error: "No input provided" });
     }
 
-    // 2. Dynamic Import (Fixes "createClient is not a function" and ESM errors)
-    const genaiModule = await import("@google/genai");
-    const createClient = genaiModule.createClient;
-    
-    if (!createClient) {
-      throw new Error("Could not find createClient in @google/genai module");
+    const apiKey = process.env.GEMINI_API_KEY;
+    // Direct Google API Endpoint
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    let promptText = "Analyze and summarize this clearly:";
+    let requestData;
+
+    if (req.file) {
+      // PDF handling for Direct API
+      requestData = {
+        contents: [{
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: "application/pdf",
+                data: req.file.buffer.toString("base64")
+              }
+            }
+          ]
+        }]
+      };
+    } else {
+      // Text handling
+      requestData = {
+        contents: [{
+          parts: [{ text: promptText + "\n" + req.body.text }]
+        }]
+      };
     }
 
-    // 3. Client Initialization
-    const client = createClient({
-      apiKey: process.env.GEMINI_API_KEY,
+    // Seedha Google ko request bhejna
+    const response = await axios.post(url, requestData, {
+      headers: { 'Content-Type': 'application/json' }
     });
 
-    const promptText = "Analyze and summarize this study material clearly and professionally:";
-    let result;
-
-    // 4. AI Content Generation
-    if (req.file) {
-      // PDF Processing
-      result = await client.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: promptText },
-              {
-                inlineData: {
-                  mimeType: "application/pdf",
-                  data: req.file.buffer.toString("base64"),
-                },
-              },
-            ],
-          },
-        ],
-      });
-    } else {
-      // Text Processing
-      result = await client.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [
-          { 
-            role: "user", 
-            parts: [{ text: promptText + "\n" + req.body.text }] 
-          }
-        ],
-      });
-    }
-
-    // 5. Extract Summary from Gemini Response
-    // Nayi SDK ka response structure: result.candidates[0].content.parts[0].text
-    if (result && result.candidates && result.candidates[0].content.parts[0]) {
-      const summary = result.candidates[0].content.parts[0].text;
-      res.json({ summary });
-    } else {
-      throw new Error("Empty response from Gemini AI");
-    }
+    // Response structure direct API mein aisa hota hai:
+    const summary = response.data.candidates[0].content.parts[0].text;
+    res.json({ summary });
 
   } catch (error) {
-    console.error("API ERROR:", error);
+    console.error("API ERROR:", error.response ? error.response.data : error.message);
     res.status(500).json({
       error: "AI processing failed",
-      details: error.message,
+      details: error.response ? error.response.data.error.message : error.message
     });
   }
 });
