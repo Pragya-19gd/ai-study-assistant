@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-// Yahan change hai: Seedha library import kijiye
-const { createClient } = require("@google/genai"); 
+const { GoogleGenAI } = require("@google/genai");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Client initialize karne ka sahi tarika
-const client = createClient({
+const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
+  apiVersion: "v1"
 });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
@@ -17,18 +16,18 @@ router.post("/", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No input provided" });
     }
 
-    const promptText = "Analyze and summarize this clearly:";
+    const prompt = "Analyze and summarize this clearly:";
+
     let result;
 
     if (req.file) {
-      // PDF handling for @google/genai
-      result = await client.models.generateContent({
-        model: "gemini-1.5-flash",
+      result = await genAI.models.generateContent({
+        model: "gemini-1.0-pro",  // Use stable model
         contents: [
           {
             role: "user",
             parts: [
-              { text: promptText },
+              { text: prompt },
               {
                 inlineData: {
                   mimeType: "application/pdf",
@@ -40,15 +39,20 @@ router.post("/", upload.single("pdf"), async (req, res) => {
         ],
       });
     } else {
-      // Text handling
-      result = await client.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [{ role: "user", parts: [{ text: promptText + "\n" + req.body.text }] }],
+      result = await genAI.models.generateContent({
+        model: "gemini-1.0-pro",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt + "\n" + req.body.text }],
+          },
+        ],
       });
     }
 
-    // Response extraction (GenAI SDK specific)
-    const summary = result.candidates[0].content.parts[0].text;
+    const summary =
+      result.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+
     res.json({ summary });
 
   } catch (error) {
