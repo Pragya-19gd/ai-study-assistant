@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 1. Simple initialization
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize new Gemini client
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
@@ -14,31 +16,38 @@ router.post("/", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No input provided" });
     }
 
-    // 2. IMPORTANT: Version ko yahan second argument mein daala hai
-    // Model name ko ek dum simple rakha hai: "gemini-1.5-flash"
-    const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash-latest" }, 
-      
-    );
-
     const prompt = "Analyze and summarize this clearly:";
+
     let result;
 
     if (req.file) {
-      result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: req.file.buffer.toString("base64"),
-            mimeType: "application/pdf",
+      // PDF input
+      result = await genAI.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: req.file.buffer.toString("base64"),
+                },
+              },
+            ],
           },
-        },
-      ]);
+        ],
+      });
     } else {
-      result = await model.generateContent(prompt + "\n" + req.body.text);
+      // Text input
+      result = await genAI.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: prompt + "\n" + req.body.text,
+      });
     }
 
-    res.json({ summary: result.response.text() });
+    res.json({ summary: result.text });
 
   } catch (error) {
     console.error("API ERROR:", error);
