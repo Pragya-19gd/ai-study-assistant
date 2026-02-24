@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { GoogleGenAI } = require("@google/genai");
+// Nayi GenAI library ko aise import karein
+const { createClient } = require("@google/genai"); 
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const genAI = new GoogleGenAI({
+// Client initialize karein (API Key check ke saath)
+const client = createClient({
   apiKey: process.env.GEMINI_API_KEY,
-  apiVersion: "v1"
 });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
@@ -16,18 +17,18 @@ router.post("/", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No input provided" });
     }
 
-    const prompt = "Analyze and summarize this clearly:";
-
+    const promptText = "Analyze and summarize this clearly:";
     let result;
 
     if (req.file) {
-      result = await genAI.models.generateContent({
-        model: "gemini-1.0-pro",  // Use stable model
+      // PDF handling
+      result = await client.models.generateContent({
+        model: "gemini-1.5-flash",
         contents: [
           {
             role: "user",
             parts: [
-              { text: prompt },
+              { text: promptText },
               {
                 inlineData: {
                   mimeType: "application/pdf",
@@ -39,24 +40,20 @@ router.post("/", upload.single("pdf"), async (req, res) => {
         ],
       });
     } else {
-      result = await genAI.models.generateContent({
-        model: "gemini-1.0-pro",
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt + "\n" + req.body.text }],
-          },
-        ],
+      // Text handling
+      result = await client.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [{ role: "user", parts: [{ text: promptText + "\n" + req.body.text }] }],
       });
     }
 
-    const summary =
-      result.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-
+    // Response extraction (GenAI SDK format)
+    // dhyan dein: result.candidates[0] se data nikalta hai
+    const summary = result.candidates[0].content.parts[0].text;
     res.json({ summary });
 
   } catch (error) {
-    console.error("API ERROR:", error);
+    console.error("API ERROR DETAILS:", error);
     res.status(500).json({
       error: "AI processing failed",
       details: error.message,
