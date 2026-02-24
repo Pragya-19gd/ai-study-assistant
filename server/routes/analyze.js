@@ -10,7 +10,8 @@ router.post("/", upload.single("pdf"), async (req, res) => {
   try {
     const { text } = req.body;
     // 1. Flash 1.5 is the best choice for PDF analysis
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+   // 'latest' suffix lagane se ye hamesha sahi version uthayega
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const prompt = `You are a professional tutor. Provide a detailed study guide in Markdown. 
     Include headers: ## 📌 Executive Summary, ## 🧠 Key Concepts.`;
