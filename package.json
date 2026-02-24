@@ -5,9 +5,10 @@
     "node": "22.x"
   },
   "scripts": {
-    "start": "node server/index.js",
-    "render-postbuild": "npm install --prefix client && npm run build --prefix client"
-  },
+  "start": "node server/index.js",
+  "build": "npm install && npm run render-postbuild",
+  "render-postbuild": "npm install --prefix client && npm run build --prefix client"
+},
   "dependencies": {
     "express": "^4.21.0",
     "cors": "^2.8.5",
