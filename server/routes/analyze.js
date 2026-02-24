@@ -12,7 +12,7 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     
     // 2. Force 'v1' API Version (Ye 404 error ko khatam karega)
     const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" },
+      { model: "gemini-1.5-flash-latest" },
       { apiVersion: 'v1' } // 🔥 YEH LINE HI SOLUTION HAI
     );
 
