@@ -4,66 +4,38 @@ const multer = require("multer");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const upload = multer({ storage: multer.memoryStorage() });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 router.post("/", upload.single("pdf"), async (req, res) => {
   try {
-    const { text } = req.body;
-    const model = genAI.getGenerativeModel({ 
-     model: "models/gemini-1.5-flash",  
-});
+    // 1. Initialize API with specific version v1
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    
+    // 2. Specify model with explicit v1 support
+    const model = genAI.getGenerativeModel(
+      { model: "gemini-1.5-flash" },
+      { apiVersion: "v1" } // 🔥 This line is the MAGIC fix for 404
+    );
 
-    const prompt = `You are a professional tutor. Provide a detailed study guide in Markdown. 
-    Include headers: ## 📌 Executive Summary, ## 🧠 Key Concepts.`;
-
-    let result;
+    const prompt = "Analyze and summarize this clearly:";
 
     if (req.file) {
-      console.log("Processing PDF for Gemini...");
-      const pdfPart = {
-        inlineData: {
-          data: req.file.buffer.toString("base64"),
-          mimeType: "application/pdf",
-        },
-      };
-      // Send both prompt and PDF
-      result = await model.generateContent([prompt, pdfPart]);
+      console.log("Processing PDF...");
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: req.file.buffer.toString("base64"), mimeType: "application/pdf" } }
+      ]);
+      return res.json({ summary: result.response.text() });
     } else {
-      console.log("Processing Text only...");
-      result = await model.generateContent([prompt, text || "Provide analysis."]);
+      console.log("Processing Text...");
+      const result = await model.generateContent(prompt + "\n" + (req.body.text || ""));
+      return res.json({ summary: result.response.text() });
     }
-
-    const response = await result.response;
-    const outputText = response.text();
-
-    res.json({
-      summary: outputText,
-      keywords: ["AI-Generated", "Study-Ready"],
-      wordCount: outputText.split(' ').length // Dynamic word count
-    });
-
   } catch (error) {
-    console.error("GEMINI ERROR:", error.message);
-
-    // Final Fallback for 404 or Overloaded errors
-    try {
-        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" }); 
-        const fallbackResult = await fallbackModel.generateContent("Create a summary for: " + (req.body.text || "attached material"));
-        const fallbackText = await fallbackResult.response.text();
-        
-        return res.json({
-            summary: fallbackText,
-            keywords: ["Fallback-Active"],
-            wordCount: "Document"
-          });
-    } catch (innerError) {
-        res.status(500).json({ 
-            error: "Gemini API Connection Failed", 
-            details: "Please check if API Key is valid and Billing is active on Google Cloud." 
-        });
-    }
+    console.error("FINAL ERROR LOG:", error.message);
+    res.status(500).json({ 
+      error: "AI processing failed", 
+      details: error.message 
+    });
   }
 });
 
